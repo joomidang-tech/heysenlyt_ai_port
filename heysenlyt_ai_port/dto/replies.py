@@ -62,3 +62,32 @@ class ConverseReply:
 
     def to_dict(self) -> dict[str, Any]:
         return dataclasses.asdict(self)
+
+
+@dataclass(frozen=True)
+class IcadComposeReply:
+    """향연 compose 출력 — **봉투 + 관호 dict 그대로**(사양서 §3-2).
+
+    payload         : `to_product_payload()` 그대로. web 이 읽는 키(name·description·recipe·
+                      emotion·grounding·regulatory·fragrance_load_pct·is_valid·errors·warnings ·
+                      확장 result_keywords·composer_note·direction)만 읽고 나머지는 보존한다.
+                      핵심 내용물(recipe·emotion·grounding·regulatory)의 내부 형상은 **불투명** —
+                      포트는 단정하지 않는다(관호 회신이 포트 형상을 바꾸지 않게).
+    stamp           : 현행 RecipeReply.stamp 와 같은 형상 {model, mode, released_at, kernel_version}.
+    llm_models_used : tier→model. **모르면 None = to_dict() 에서 키 생략**(현행 규약 — 거짓값 금지).
+                      서버가 실측(요청 렌즈)으로 채우거나 어댑터가 직접 기록한다(사양서 §4-5).
+
+    ⚠️ 와이어 키는 snake_case(`llm_models_used`) — web 미러 IcadContracts.ts 와 1:1.
+       (현행 recipe/converse 의 서버 추가 필드 `llmModelsUsed` 와 표기가 다르다 — 그쪽은 서버가
+        응답 dict 에 덧붙이는 camelCase 필드이고, 이쪽은 **계약 DTO 의 필드**다.)
+    """
+
+    payload: dict[str, Any]
+    stamp: dict[str, str]
+    llm_models_used: dict[str, str] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        d = dataclasses.asdict(self)
+        if d.get("llm_models_used") is None:
+            d.pop("llm_models_used", None)  # 모르면 싣지 않는다(옵셔널 키)
+        return d
