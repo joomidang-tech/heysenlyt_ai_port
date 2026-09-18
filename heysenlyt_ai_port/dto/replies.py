@@ -73,6 +73,10 @@ class IcadComposeReply:
                       확장 result_keywords·composer_note·direction)만 읽고 나머지는 보존한다.
                       핵심 내용물(recipe·emotion·grounding·regulatory)의 내부 형상은 **불투명** —
                       포트는 단정하지 않는다(관호 회신이 포트 형상을 바꾸지 않게).
+                      단 **`recipe` 만은 현행 향장향 `RecipeReply.recipe` 와 같은 FragranceResult 형상**
+                      이어야 한다 — `notes[]{name, nameKo, amountMl(**mL**), percent, type: top|middle|base}`
+                      + `totalVolumeMl`(mL). web 변환기·pi 조립이 이 형식만 읽는다(향연 조향 = 현행 향장향
+                      엔진 · 2026-09-18 확정 · 포트 사양서 §4-1 a~c 종결). 단위를 바꾸면 1000배 오토출이다.
     stamp           : 현행 RecipeReply.stamp 와 같은 형상 {model, mode, released_at, kernel_version}.
     llm_models_used : tier→model. **모르면 None = to_dict() 에서 키 생략**(현행 규약 — 거짓값 금지).
                       서버가 실측(요청 렌즈)으로 채우거나 어댑터가 직접 기록한다(사양서 §4-5).
