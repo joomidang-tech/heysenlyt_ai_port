@@ -1,11 +1,15 @@
-"""RecipePort — 레시피를 만드는 함수의 약속 + LlmPort(주입 인터페이스). 의존성 0."""
+"""LlmPort — 어댑터에 **주입되는 LLM**의 모양. 의존성 0.
+
+이 파일이 독립인 이유(2026-09-20 구조 개편): 종전엔 `ports/recipe_port.py` 안에 얹혀 있었는데,
+  LlmPort 는 레시피 전용이 아니라 **모든 포트가 인자로 받는 공통 주입 표면**이다
+  (RecipePort·ConversationPort·IcadComposePort 셋 다 `llm: LlmPort | None`). 한 계약 파일 안에
+  살면 "레시피의 부속"으로 읽히고, 실제로 icad_port 가 recipe_port 를 import 하는 기묘한
+  의존이 생겼다. 공통 어휘는 공통 자리에 둔다.
+"""
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
 from typing import Any, Protocol, runtime_checkable
-
-from heysenlyt_ai_port.dto.params import RecipeParam, RegenerateParam
 
 
 @runtime_checkable
@@ -59,44 +63,5 @@ class LlmPort(Protocol):
         tools    : OpenAI/OpenRouter function tool 스키마 리스트 (없으면 순수 대화).
         반환      : {"content": str, "tool_calls": [{"name": str, "args": dict}, ...]}
                    — content=AI 발화, tool_calls=이번 턴 호출된 함수들(순서 보존).
-        """
-        ...
-
-
-class RecipePort(ABC):
-    """레시피를 만드는 함수 — 연구소(관호)가 이 클래스를 상속해 어댑터를 만든다.
-
-    계약 불변식 (구현이 반드시 지킬 것):
-      1. 재진입: generate()는 self의 어떤 상태도 바꾸지 않는다. 같은 인스턴스로
-         여러 번·동시에 불러도 호출끼리 간섭하지 않는다.
-      2. 부작용은 인자로: 밖으로 나가는 호출(LLM)은 llm 인자를 통해서만.
-         llm=None이면 구현 기본 클라이언트를 쓴다 (현행 프로덕션 동작).
-      3. 같은 입력 + 같은 llm 응답 → 같은 반환 dict.
-
-    반환 dict = RecipeReply.to_dict() (JSON-safe). 통째로 RegenerateParam.prior 로 넣으면 재조향.
-    """
-
-    @abstractmethod
-    def generate(self, request: RecipeParam, llm: LlmPort | None = None) -> dict[str, Any]:
-        """레시피 생성 — prompt 가 지배한다. 위 불변식 참조.
-
-        재조향(손님 피드백 반영)은 이 메서드가 아니라 regenerate() 다.
-        """
-        ...
-
-    @abstractmethod
-    def regenerate(
-        self, request: RegenerateParam, llm: LlmPort | None = None
-    ) -> dict[str, Any]:
-        """재조향 — **feedback 이 지배**하는 신규 레시피. prior 는 참고 맥락(픽스 아님).
-
-        generate 와 갈라 둔 이유: 두 동작은 "지배하는 입력"이 다르다. 한 메서드에 nullable
-        prior 로 얹으면 그 차이가 타입에서 사라지고, 어댑터마다 "prior 를 얼마나 존중하나"가
-        갈린다. 기획 결정(B 방식)은 **크게 달라지는 것이 정상**이다 — 그걸 계약에 박아 둔다.
-
-        구현은 생성 경로를 generate 와 공유해도 된다(프롬프트를 무엇으로 만드느냐만 다르다).
-        계약이 요구하는 건 **두 동작이 호출자에게 구분되어 보이는 것**이지 코드 분리가 아니다.
-
-        불변식은 generate 와 동일(재진입·부작용은 인자로·같은 입력이면 같은 반환).
         """
         ...
