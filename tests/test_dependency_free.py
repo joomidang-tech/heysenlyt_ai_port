@@ -83,3 +83,45 @@ def test_icad_reply_to_dict_roundtrip_and_optional_models_used():
     assert used["llm_models_used"] == {"chat": "x/y"}  # snake_case 와이어 키(IcadContracts.ts)
     # 라운드트립 — dict 로 폈다가 다시 DTO 로 접으면 같다.
     assert IcadComposeReply(**used) == IcadComposeReply(payload=payload, stamp=stamp, llm_models_used={"chat": "x/y"})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# 향료 팔레트 계약 — 2026-09-20 신설(`palette.py`). "이번 요청에서 쓸 수 있는 향료".
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+def test_palette_is_exported_and_frozen():
+    from heysenlyt_ai_port import Palette
+
+    p = Palette(notes=("Bitter Lemon", "Musk"))
+    assert p.notes == ("Bitter Lemon", "Musk")
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        p.notes = ()  # type: ignore[misc]
+
+
+def test_palette_is_optional_and_last_on_every_input_dto():
+    """⛔ 하위호환의 두 축을 함께 못박는다.
+
+    1) 기본값 None — 구 web(팔레트를 안 보냄)·구 어댑터(필드를 안 읽음)가 **그대로** 돈다.
+    2) **마지막 필드** — 입력 DTO 를 위치인자로 만드는 소비자가 있어도 자리가 안 밀린다.
+       (RecipeParam("문장", None, "ko", {}) 의 네 자리가 오늘과 같은 뜻이어야 한다.)
+    """
+    from heysenlyt_ai_port import IcadComposeParam, IcadTurn, RecipeParam, RegenerateParam
+
+    for cls in (RecipeParam, RegenerateParam, IcadComposeParam):
+        names = [f.name for f in dataclasses.fields(cls)]
+        assert names[-1] == "palette", f"{cls.__name__}: palette 가 마지막 필드가 아니다 — {names}"
+
+    assert RecipeParam("한 문장").palette is None
+    assert RegenerateParam("덜 달게", {}).palette is None
+    assert IcadComposeParam(history=(IcadTurn("user", "안녕"),)).palette is None
+    # 위치인자 4개가 오늘과 같은 자리에 앉는다
+    r = RecipeParam("한 문장", "rule", "en", {"complexity": 3})
+    assert (r.mode, r.lang, r.params, r.palette) == ("rule", "en", {"complexity": 3}, None)
+
+
+def test_palette_carries_names_only():
+    """엔진은 "무엇을 쓸 수 있나"만 안다 — 양·포트·펌프 주소가 계약에 생기면 하드웨어 배치가 산식에 샌다."""
+    from heysenlyt_ai_port import Palette
+
+    assert [f.name for f in dataclasses.fields(Palette)] == ["notes"]

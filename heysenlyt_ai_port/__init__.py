@@ -10,6 +10,7 @@
 | `llm.py`          | `LlmPort` — 주입되는 LLM 의 모양      | **공통**(세 포트 전부 인자로 받는다) |
 | `errors.py`       | 실패 어휘(`LlmError` 계열)            | **공통** |
 | `version.py`      | `VersionPort` · `VersionInfo`         | **공통**(도장의 출처) |
+| `palette.py`      | `Palette` — 이번 요청에서 쓸 수 있는 향료 | **공통**(레시피·향연 입력이 함께 든다) |
 | `conversation.py` | 대화 한 턴                            | **두 order web 공용**(향연은 `params` 로 정책만 얹는다) |
 | `recipe.py`       | 레시피 생성·재조향                    | 헤이센릿 order web |
 | `icad.py`         | 향연 compose(대화 이력 → payload 하나) | 향연 order web |
@@ -40,6 +41,7 @@ from heysenlyt_ai_port.icad import (
     IcadTurn,
 )
 from heysenlyt_ai_port.llm import LlmPort
+from heysenlyt_ai_port.palette import Palette
 from heysenlyt_ai_port.recipe import (
     RecipeParam,
     RecipePort,
@@ -63,6 +65,7 @@ __all__ = [
     "LlmResponseError",
     "LlmTimeoutError",
     "LlmUnavailableError",
+    "Palette",
     "RecipePort",
     "RecipeReply",
     "RecipeParam",

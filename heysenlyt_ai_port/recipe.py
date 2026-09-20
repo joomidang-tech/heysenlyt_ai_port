@@ -14,6 +14,7 @@ import dataclasses
 from typing import Any
 
 from heysenlyt_ai_port.llm import LlmPort
+from heysenlyt_ai_port.palette import Palette
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,9 @@ class RecipeParam:
     mode: str | None = None
     lang: str = "ko"
     params: dict[str, Any] = field(default_factory=dict)
+    # (2026-09-20) 이번 요청에서 **쓸 수 있는 향료** — 그 기기에 실제로 꽂혀 있는 것. None = 제한 없음(현행).
+    #   계약·어휘·실패 규약 정본 = `palette.py`. ⚠️ 신규 필드라 **끝에** 둔다(위치인자 소비자 호환).
+    palette: Palette | None = None
 
 
 @dataclass(frozen=True)
@@ -63,6 +67,9 @@ class RegenerateParam:
     mode: str | None = None
     lang: str = "ko"
     params: dict[str, Any] = field(default_factory=dict)
+    # (2026-09-20) 이번 요청에서 **쓸 수 있는 향료** — 그 기기에 실제로 꽂혀 있는 것. None = 제한 없음(현행).
+    #   계약·어휘·실패 규약 정본 = `palette.py`. ⚠️ 신규 필드라 **끝에** 둔다(위치인자 소비자 호환).
+    palette: Palette | None = None
 
 
 @dataclass(frozen=True)
