@@ -13,8 +13,8 @@ from dataclasses import dataclass, field
 import dataclasses
 from typing import Any
 
-from heysenlyt_ai_port.llm import LlmPort
-from heysenlyt_ai_port.palette import Palette
+from heysenlyt_ai_port.shared.llm import LlmPort
+from heysenlyt_ai_port.shared.palette import Palette
 
 
 @dataclass(frozen=True)
