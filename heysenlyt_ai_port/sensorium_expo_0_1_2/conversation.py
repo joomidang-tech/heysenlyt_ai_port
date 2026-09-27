@@ -13,6 +13,7 @@ import dataclasses
 from typing import Any
 
 from heysenlyt_ai_port.llm import LlmPort
+from heysenlyt_ai_port.version import VersionPort  # get_version() 도 추상 메서드 — 무조건 구현(2026-09-27)
 
 
 @dataclass(frozen=True)
@@ -82,7 +83,7 @@ class ConverseReply:
         return dataclasses.asdict(self)
 
 
-class ConversationPort(ABC):
+class ConversationPort(VersionPort):
     """대화 함수의 약속 — 반환 = ConverseReply.to_dict():
     {"reply": AI 발화, "keywords": 폐기(항상 []), "done": readiness 제출됨,
      "result": done일 때 취향 축 페이로드|None, "history": 갱신된 기록}.

@@ -13,6 +13,7 @@ import dataclasses
 from typing import Any
 
 from heysenlyt_ai_port.llm import LlmPort
+from heysenlyt_ai_port.version import VersionPort  # get_version() 도 추상 메서드 — 무조건 구현(2026-09-27)
 
 
 # ## Palette — 이번 요청에서 **쓸 수 있는 향료** (2026-09-20 신설 · 2026-09-27 세대 폴더 안으로)
@@ -113,7 +114,7 @@ class RecipeReply:
         return dataclasses.asdict(self)
 
 
-class RecipePort(ABC):
+class RecipePort(VersionPort):
     """레시피를 만드는 함수 — 연구소(관호)가 이 클래스를 상속해 어댑터를 만든다.
 
     계약 불변식 (구현이 반드시 지킬 것):

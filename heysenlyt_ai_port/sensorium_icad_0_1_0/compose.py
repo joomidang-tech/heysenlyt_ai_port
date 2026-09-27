@@ -13,6 +13,7 @@ import dataclasses
 from typing import Any
 
 from heysenlyt_ai_port.llm import LlmPort
+from heysenlyt_ai_port.version import VersionPort  # get_version() 도 추상 메서드 — 무조건 구현(2026-09-27)
 
 
 # ## Palette — 이번 요청에서 **쓸 수 있는 향료** (2026-09-20 신설 · 2026-09-27 세대 폴더 안으로)
@@ -150,7 +151,7 @@ class ComposeReply:
         return d
 
 
-class ComposePort(ABC):
+class ComposePort(VersionPort):
     """향연 compose 의 약속 — 연구소(관호)가 상속해 이 세대의 compose 어댑터를 만든다."""
 
     @abstractmethod

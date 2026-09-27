@@ -136,3 +136,16 @@ def test_generation_contract_is_abstract_and_ports_are_derived_from_it():
         assert set(module.PORTS) <= abstract
         assert set(module.PORTS) == abstract - {"chat_stamp"}
     assert "chat_stamp" in heysenlyt_ai_port.sensorium_icad_0_1_0.AiContract.__abstractmethods__
+
+
+def test_every_port_requires_get_version():
+    """버전도 "무조건 구현" — 포트가 VersionPort 를 상속하므로 get_version 을 빼먹은 어댑터는 만들 수 없다."""
+    from heysenlyt_ai_port import VersionPort
+
+    for module in GENERATIONS.values():
+        for cls_name in ("RecipePort", "ConversationPort", "ComposePort"):
+            cls = getattr(module, cls_name, None)
+            if cls is None:
+                continue
+            assert issubclass(cls, VersionPort), (module.VERSION_ID, cls_name)
+            assert "get_version" in cls.__abstractmethods__, (module.VERSION_ID, cls_name)
