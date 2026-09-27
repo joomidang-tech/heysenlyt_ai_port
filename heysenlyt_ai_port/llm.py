@@ -1,8 +1,8 @@
 """LlmPort — 어댑터에 **주입되는 LLM**의 모양. 의존성 0.
 
-이 파일이 독립인 이유(2026-09-20 구조 개편): 종전엔 `ports/recipe_port.py` 안에 얹혀 있었는데,
+이 파일이 최상위(세대 폴더 밖)인 이유(2026-09-27 세대 축 개편): 종전엔 `ports/recipe_port.py` 안에 얹혀 있었는데,
   LlmPort 는 레시피 전용이 아니라 **모든 포트가 인자로 받는 공통 주입 표면**이다
-  (RecipePort·ConversationPort·IcadComposePort 셋 다 `llm: LlmPort | None`). 한 계약 파일 안에
+  (모든 세대의 RecipePort·ConversationPort·ComposePort 가 `llm: LlmPort | None`) — 통합코드가 어댑터에 **주는** 역방향 포트라 세대와 무관하다. 한 계약 파일 안에
   살면 "레시피의 부속"으로 읽히고, 실제로 icad_port 가 recipe_port 를 import 하는 기묘한
   의존이 생겼다. 공통 어휘는 공통 자리에 둔다.
 """

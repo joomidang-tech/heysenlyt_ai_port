@@ -1,77 +1,60 @@
 """heysenlyt_ai_port — heysenlyt(프로덕트팀) ↔ SENSORIUM(연구소) 계약 라이브러리.
 
-## 구성 — **order web 먼저, 그 안에서 계약 단위** (2026-09-21 · 세 층 같은 모양)
-포트 · 통합코드(`heysenlyt-ai/application`) · 어댑터(`heysenlyt_ai_adapter`)가 **같은 세 폴더**를 갖는다.
-  어댑터는 통합 레포로 **통째 복사**해 쓰므로, 세 층의 모양이 같아야 "이 order web 의 길"을
-  포트 → 유스케이스 → 구현으로 **같은 자리에서** 따라갈 수 있다. 한 계약(포트 + 입력 DTO + 응답 DTO)은
-  여전히 한 파일이다(2026-09-20 수직 슬라이스 그대로 — 이번엔 그 파일들을 order web 으로 묶었을 뿐).
+## 구성 — **센소리움 세대가 축이다** (2026-09-27 개편)
+포트 · 어댑터(`heysenlyt_ai_adapter`) · 통합코드(`heysenlyt-ai/application`)가 **같은 세대 폴더**를 갖는다.
+  세대 폴더 하나 = "그 세대에 통합코드가 부르는 호출(포트)" 전부. 어댑터는 같은 이름의 폴더에서 그 포트를
+  구현하고, 통합코드는 그 폴더를 **그대로 복사**해 꽂은 뒤 요청의 `sensorium_version` 으로 세대를 고른다.
 
-| 폴더 | 파일 | 무엇 |
-|------|------|------|
-| `heysenlyt/` | `recipe.py`       | 헤이센릿 order web — 레시피 생성·재조향 |
-| `icad/`      | `compose.py`      | 향연 order web — 대화 이력 → payload 하나 |
-| `shared/`    | `conversation.py` | 대화 한 턴 — **두 order web 공용**(향연은 `params` 로 정책만 얹는다) |
-| `shared/`    | `llm.py`          | `LlmPort` — 주입되는 LLM 의 모양(세 포트 전부 인자로 받는다) |
-| `shared/`    | `palette.py`      | `Palette` — 이번 요청에서 쓸 수 있는 향료(레시피·향연 입력이 함께 든다) |
-| `shared/`    | `version.py`      | `VersionPort` · `VersionInfo`(도장의 출처) |
-| `shared/`    | `errors.py`       | 실패 어휘(`LlmError` 계열) |
+| 폴더 | 세대 id | domain | 포트 |
+|------|---------|--------|------|
+| `sensorium_fragrance_1_0_0/` | sensorium-fragrance-1.0.0 | fragrance | `recipe.py`(generate·regenerate) · `conversation.py` |
+| `sensorium_expo_0_1_2/`      | sensorium-expo-0.1.2      | flavor    | `recipe.py`(generate) · `conversation.py` |
+| `sensorium_icad_0_1_0/`      | sensorium-icad-0.1.0 (가id) | fragrance | `conversation.py` · `compose.py` |
+| 최상위                       | —                         | —         | `llm.py`(LlmPort · 역방향) · `errors.py` · `version.py`(VersionPort · id↔폴더 규칙) |
 
-⛔ 의존 방향은 `heysenlyt/`·`icad/` → `shared/` 뿐이다. 두 order web 폴더는 서로를 모른다(tests/test_shape.py).
-⛔ 의존성 0 — 표준 라이브러리 외 import 금지(test_dependency_free.py 로 강제).
-⛔ **공개 표면은 톱레벨 재수출뿐이다** — 소비자는 `from heysenlyt_ai_port import RecipePort` 로만
-   쓴다(실측 2026-09-20: 서브모듈 경로를 직접 import 하는 소비자 0건). 그래서 내부 배치는
-   이 파일이 같은 이름을 계속 내보내는 한 자유롭게 바꿀 수 있다 — 이번 개편이 그 성질에 기댔다.
+⛔ **세대 폴더는 자기완결** — 세대끼리 import 금지. 세대 폴더가 의존할 수 있는 건 최상위 3파일뿐(tests/test_shape.py).
+⛔ 의존성 0 — 표준 라이브러리 외 import 금지(test_dependency_free.py).
+⛔ **공개 표면 = 세대 폴더 + 최상위 3파일.** 세대마다 같은 이름의 클래스(RecipePort 등)가 있으므로 톱레벨 재수출은
+   세대 무관 심볼만 한다. 소비자는 `from heysenlyt_ai_port.sensorium_fragrance_1_0_0 import RecipePort` 로 쓴다.
+   (2026-09-21 까지의 `from heysenlyt_ai_port import RecipePort` 는 **사라졌다** — 소비자는 어댑터·통합코드 둘뿐이고 같은 사이클에 옮겼다.)
 """
 
-from heysenlyt_ai_port.shared.conversation import (
-    ConversationParam,
-    ConversationPort,
-    ConverseReply,
-    Demographics,
+from heysenlyt_ai_port import sensorium_expo_0_1_2, sensorium_fragrance_1_0_0, sensorium_icad_0_1_0
+from heysenlyt_ai_port.errors import LlmError, LlmResponseError, LlmTimeoutError, LlmUnavailableError
+from heysenlyt_ai_port.llm import LlmPort
+from heysenlyt_ai_port.version import VersionInfo, VersionPort, base_version, generation_folder
+
+# 세대 레지스트리 — 어댑터(`heysenlyt_ai_adapter.GENERATIONS`)와 **키가 같아야** 한다(양쪽 test_shape 가 잠근다).
+GENERATIONS = {
+    sensorium_fragrance_1_0_0.VERSION_ID: sensorium_fragrance_1_0_0,
+    sensorium_expo_0_1_2.VERSION_ID: sensorium_expo_0_1_2,
+    sensorium_icad_0_1_0.VERSION_ID: sensorium_icad_0_1_0,
+}
+
+# ── ⚠️ 하위호환 shim — **v1.4.0 사이클 동안만** (2026-09-27 검증팀 P1) ─────────────────────────
+#   통합 레포 `main`·`dev`(개편 전 코드)와 옛 어댑터 사본은 `from heysenlyt_ai_port import RecipeParam` 같은 톱레벨 이름을
+#   쓰고, requirements 가 이 포트를 **브랜치** `@v1.4.0` 으로 핀한다. 이 이름들이 없으면 포트 push 직후부터 prod/dev 재빌드
+#   (핫픽스 포함)가 ImportError 로 막힌다. 그래서 옛 이름을 **향장향·향연 세대의 것으로 그대로** 내보낸다 — 옛 코드는 세대가
+#   하나였고 그 하나가 이 둘이다(식향 어댑터가 향장향 RecipePort 를 상속해도 메서드가 더 있을 뿐이라 동작 같음).
+#   ⛔ 새 코드는 이 이름을 쓰지 않는다(세대 모듈에서 가져온다 — 아래 `__all__` 에도 넣지 않는다). 통합 `main` 이 세대 축
+#   코드로 승격되면 이 블록을 **지운다**(다음 폴더 버전 v1.5.0 에는 없어야 한다).
+from heysenlyt_ai_port.sensorium_fragrance_1_0_0 import (  # noqa: E402,F401 — shim
+    ConversationParam, ConversationPort, ConverseReply, Demographics,
+    Palette, RecipeParam, RecipePort, RecipeReply, RegenerateParam,
 )
-from heysenlyt_ai_port.shared.errors import (
-    LlmError,
-    LlmResponseError,
-    LlmTimeoutError,
-    LlmUnavailableError,
+from heysenlyt_ai_port.sensorium_icad_0_1_0 import (  # noqa: E402,F401 — shim (옛 이름 = Icad 접두)
+    ComposeParam as IcadComposeParam, ComposePort as IcadComposePort, ComposePrior as IcadPrior,
+    ComposeReply as IcadComposeReply, ComposeTurn as IcadTurn,
 )
-from heysenlyt_ai_port.icad.compose import (
-    IcadComposeParam,
-    IcadComposePort,
-    IcadComposeReply,
-    IcadPrior,
-    IcadTurn,
+LEGACY_TOP_LEVEL_NAMES = (
+    "ConversationParam", "ConversationPort", "ConverseReply", "Demographics", "Palette",
+    "RecipeParam", "RecipePort", "RecipeReply", "RegenerateParam",
+    "IcadComposeParam", "IcadComposePort", "IcadPrior", "IcadComposeReply", "IcadTurn",
 )
-from heysenlyt_ai_port.shared.llm import LlmPort
-from heysenlyt_ai_port.shared.palette import Palette
-from heysenlyt_ai_port.heysenlyt.recipe import (
-    RecipeParam,
-    RecipePort,
-    RecipeReply,
-    RegenerateParam,
-)
-from heysenlyt_ai_port.shared.version import VersionInfo, VersionPort
 
 __all__ = [
-    "ConversationPort",
-    "ConversationParam",
-    "ConverseReply",
-    "Demographics",
-    "IcadComposeParam",
-    "IcadComposePort",
-    "IcadComposeReply",
-    "IcadPrior",
-    "IcadTurn",
-    "LlmError",
-    "LlmPort",
-    "LlmResponseError",
-    "LlmTimeoutError",
-    "LlmUnavailableError",
-    "Palette",
-    "RecipePort",
-    "RecipeReply",
-    "RecipeParam",
-    "RegenerateParam",
-    "VersionInfo",
-    "VersionPort",
+    "GENERATIONS",
+    "LlmError", "LlmPort", "LlmResponseError", "LlmTimeoutError", "LlmUnavailableError",
+    "VersionInfo", "VersionPort", "base_version", "generation_folder",
+    "sensorium_expo_0_1_2", "sensorium_fragrance_1_0_0", "sensorium_icad_0_1_0",
 ]

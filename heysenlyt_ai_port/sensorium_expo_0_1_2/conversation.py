@@ -1,10 +1,8 @@
-"""대화 계약 — 포트 + 입력 DTO + 응답 DTO. 의존성 0.
+"""sensorium-expo-0.1.2 — 대화 계약. 의존성 0.
 
-**두 order web 이 함께 쓰는 유일한 계약**이다(2026-09-20 구조 개편 메모):
-  · 헤이센릿 order web — `/api/chat` 그대로
-  · 향연(icad) order web — 같은 `/api/chat` 에 `params.hyangyeon`(회차·턴·1차 요약)을 얹는다
-  그래서 도메인별(recipe)·셸별(icad) 슬라이스와 달리 **공용 자리**에 둔다. 향연 때문에 이
-  시그니처를 바꾸지 않는다는 것이 계약(대화 정책 분기는 `params` 로 간다).
+⛔ 이 파일은 **이 세대만의 계약**이다(2026-09-27 세대 축 개편). 다른 세대와 내용이 같아 보여도 공유하지 않는다 —
+   세대가 갈릴 때 옛 세대 계약을 건드리지 않기 위해 처음부터 세대 폴더 안에 둔다. 세대끼리 import 금지(tests/test_shape.py).
+   세대 무관 계약(LlmPort · 실패 어휘 · VersionPort)만 패키지 최상위에 있다.
 """
 
 from __future__ import annotations
@@ -14,7 +12,7 @@ from dataclasses import dataclass, field
 import dataclasses
 from typing import Any
 
-from heysenlyt_ai_port.shared.llm import LlmPort
+from heysenlyt_ai_port.llm import LlmPort
 
 
 @dataclass(frozen=True)
