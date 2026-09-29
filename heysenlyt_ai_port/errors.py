@@ -63,3 +63,14 @@ class LlmResponseError(LlmError):
 
     code = "llm_response"
     retryable = False
+
+
+class PortContractError(TypeError, ValueError):
+    """포트 계약 위반 — 포트 클래스(파라미터·리턴)가 **모양이 틀린 값**으로 만들어지려 할 때 (2026-09-29).
+
+    누가 던지나 : 포트 클래스의 `__post_init__`·`from_dict` 검증(예: 향료 줄 `id` 누락, dict 를 클래스 자리에 넣음).
+    서버 정책   : **어댑터 호출 중**에 나면 = 어댑터가 계약을 어긴 것 → **502 `adapter contract violation`**
+                  (내부 메시지는 손님에게 내보내지 않는다). 호출자 입력 검증 실패(진짜 400)와 구분하려고 전용 타입을 둔다.
+    TypeError·ValueError 를 **둘 다** 상속한다 — 이 타입이 생기기 전 `except ValueError`/`except TypeError` 로 잡던
+      코드가 그대로 잡히게(하위호환).
+    """

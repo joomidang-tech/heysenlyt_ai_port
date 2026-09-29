@@ -7,7 +7,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any
+
+from heysenlyt_ai_port.errors import PortContractError
 
 
 @dataclass(frozen=True)
@@ -26,6 +30,41 @@ class VersionInfo:
     # ⚠️ 신규 필드는 항상 끝에 추가 — 위치인자 소비자가 있어도 계약이 안 깨지게
     released_at: str = ""  # 그 세대가 나온 날 (도장의 released_at)
     model_type: str = ""  # "llm-pipeline"
+
+
+@dataclass(frozen=True)
+class Stamp:
+    """산출물 도장 — "어느 세대·방식이 이걸 만들었나"를 결과에 찍는 값(2026-09-29 dict → 클래스).
+
+    레시피·대화·향연 결과가 모두 이 네 칸을 싣는다. web 이 영속하는 값이라 와이어 키(snake_case)를 그대로 쓴다.
+    kernel_version 은 `{model}+{mode}+{released_at}` 한 문자열(v1.2.0 stampVersion 과 같은 형식).
+    ⛔ 네 칸 모두 **비어 있으면 안 된다** — 빈 도장은 "누가 만들었는지 모른다"를 조용히 영속한다.
+    """
+
+    model: str
+    mode: str
+    released_at: str
+    kernel_version: str
+
+    def __post_init__(self) -> None:
+        for name in ("model", "mode", "released_at", "kernel_version"):
+            v = getattr(self, name)
+            if not isinstance(v, str) or not v.strip():
+                raise PortContractError(f"Stamp.{name} 는 비어 있지 않은 문자열이어야 한다: {v!r}")
+
+    @classmethod
+    def from_dict(cls, d: Mapping[str, Any]) -> "Stamp":
+        if not isinstance(d, Mapping):
+            raise PortContractError(f"Stamp.from_dict: Mapping 이 아니다({type(d).__name__})")
+        missing = [k for k in ("model", "mode", "released_at", "kernel_version") if k not in d]
+        if missing:
+            raise PortContractError(f"Stamp.from_dict: 필수 키 누락 {missing}")
+        return cls(model=d["model"], mode=d["mode"], released_at=d["released_at"],
+                   kernel_version=d["kernel_version"])
+
+    def to_dict(self) -> dict[str, str]:
+        return {"model": self.model, "mode": self.mode, "released_at": self.released_at,
+                "kernel_version": self.kernel_version}
 
 
 class VersionPort(ABC):

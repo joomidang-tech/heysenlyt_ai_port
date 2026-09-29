@@ -11,6 +11,7 @@ from abc import ABC, abstractmethod
 
 from heysenlyt_ai_port.sensorium_icad_0_1_0.conversation import ConversationPort
 from heysenlyt_ai_port.sensorium_icad_0_1_0.compose import ComposePort
+from heysenlyt_ai_port.version import Stamp
 
 
 class AiContract(ABC):
@@ -27,8 +28,8 @@ class AiContract(ABC):
         ...
 
     @abstractmethod
-    def chat_stamp(self) -> dict[str, str]:
-        """이 세대 대화 도장 {model, mode, released_at, kernel_version} — 통합코드의 향연 마지막 턴(LLM 0 · 고정 문장)이 쓴다.
+    def chat_stamp(self) -> Stamp:
+        """이 세대 대화 도장(Stamp · 2026-09-29 dict → 클래스) — 통합코드의 향연 마지막 턴(LLM 0 · 고정 문장)이 쓴다.
 
         대화 어댑터를 부르지 않는 턴이라 도장을 어댑터 호출 결과에서 얻을 수 없다. 그래서 세대가 **반드시** 내준다.
         """

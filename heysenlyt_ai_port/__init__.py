@@ -10,7 +10,7 @@
 | `sensorium_fragrance_1_0_0/` | sensorium-fragrance-1.0.0 | fragrance | `recipe.py`(generate·regenerate) · `conversation.py` |
 | `sensorium_expo_0_1_2/`      | sensorium-expo-0.1.2      | flavor    | `recipe.py`(generate) · `conversation.py` |
 | `sensorium_icad_0_1_0/`      | sensorium-icad-0.1.0 (가id) | fragrance | `conversation.py` · `compose.py` |
-| 최상위                       | —                         | —         | `llm.py`(LlmPort · 역방향) · `errors.py` · `version.py`(VersionPort · id↔폴더 규칙) |
+| 최상위                       | —                         | —         | `llm.py`(LlmPort · 역방향) · `errors.py` · `version.py`(VersionPort · Stamp · id↔폴더 규칙) |
 
 ⛔ **세대 폴더는 자기완결** — 세대끼리 import 금지. 세대 폴더가 의존할 수 있는 건 최상위 3파일뿐(tests/test_shape.py).
 ⛔ 의존성 0 — 표준 라이브러리 외 import 금지(test_dependency_free.py).
@@ -20,9 +20,9 @@
 """
 
 from heysenlyt_ai_port import sensorium_expo_0_1_2, sensorium_fragrance_1_0_0, sensorium_icad_0_1_0
-from heysenlyt_ai_port.errors import LlmError, LlmResponseError, LlmTimeoutError, LlmUnavailableError
+from heysenlyt_ai_port.errors import LlmError, LlmResponseError, LlmTimeoutError, LlmUnavailableError, PortContractError
 from heysenlyt_ai_port.llm import LlmPort
-from heysenlyt_ai_port.version import VersionInfo, VersionPort, base_version, generation_folder
+from heysenlyt_ai_port.version import Stamp, VersionInfo, VersionPort, base_version, generation_folder
 
 # 세대 레지스트리 — 어댑터(`heysenlyt_ai_adapter.GENERATIONS`)와 **키가 같아야** 한다(양쪽 test_shape 가 잠근다).
 GENERATIONS = {
@@ -54,7 +54,7 @@ LEGACY_TOP_LEVEL_NAMES = (
 
 __all__ = [
     "GENERATIONS",
-    "LlmError", "LlmPort", "LlmResponseError", "LlmTimeoutError", "LlmUnavailableError",
-    "VersionInfo", "VersionPort", "base_version", "generation_folder",
+    "LlmError", "LlmPort", "LlmResponseError", "LlmTimeoutError", "LlmUnavailableError", "PortContractError",
+    "Stamp", "VersionInfo", "VersionPort", "base_version", "generation_folder",
     "sensorium_expo_0_1_2", "sensorium_fragrance_1_0_0", "sensorium_icad_0_1_0",
 ]
