@@ -8,6 +8,7 @@
 | 폴더 | 세대 id | domain | 포트 |
 |------|---------|--------|------|
 | `sensorium_fragrance_1_0_0/` | sensorium-fragrance-1.0.0 | fragrance | `recipe.py`(generate·regenerate) · `conversation.py` |
+| `sensorium_fragrance_1_1_0/` | sensorium-fragrance-1.1.0 | fragrance | 1.0.0 과 같은 포트(2026-10-13 · 시연용 Tecan 세대 — 향료 목록만 다름) |
 | `sensorium_expo_0_1_2/`      | sensorium-expo-0.1.2      | flavor    | `recipe.py`(generate) · `conversation.py` |
 | `sensorium_icad_0_1_0/`      | sensorium-icad-0.1.0 (가id) | fragrance | `conversation.py` · `compose.py` |
 | 최상위                       | —                         | —         | `llm.py`(LlmPort · 역방향) · `errors.py` · `version.py`(VersionPort · Stamp · id↔폴더 규칙) |
@@ -19,7 +20,7 @@
    (2026-09-21 까지의 `from heysenlyt_ai_port import RecipePort` 는 **사라졌다** — 소비자는 어댑터·통합코드 둘뿐이고 같은 사이클에 옮겼다.)
 """
 
-from heysenlyt_ai_port import sensorium_expo_0_1_2, sensorium_fragrance_1_0_0, sensorium_icad_0_1_0
+from heysenlyt_ai_port import sensorium_expo_0_1_2, sensorium_fragrance_1_0_0, sensorium_fragrance_1_1_0, sensorium_icad_0_1_0
 from heysenlyt_ai_port.errors import LlmError, LlmResponseError, LlmTimeoutError, LlmUnavailableError, PortContractError
 from heysenlyt_ai_port.llm import LlmPort
 from heysenlyt_ai_port.version import Stamp, VersionInfo, VersionPort, base_version, generation_folder
@@ -27,6 +28,7 @@ from heysenlyt_ai_port.version import Stamp, VersionInfo, VersionPort, base_vers
 # 세대 레지스트리 — 어댑터(`heysenlyt_ai_adapter.GENERATIONS`)와 **키가 같아야** 한다(양쪽 test_shape 가 잠근다).
 GENERATIONS = {
     sensorium_fragrance_1_0_0.VERSION_ID: sensorium_fragrance_1_0_0,
+    sensorium_fragrance_1_1_0.VERSION_ID: sensorium_fragrance_1_1_0,
     sensorium_expo_0_1_2.VERSION_ID: sensorium_expo_0_1_2,
     sensorium_icad_0_1_0.VERSION_ID: sensorium_icad_0_1_0,
 }
@@ -56,5 +58,5 @@ __all__ = [
     "GENERATIONS",
     "LlmError", "LlmPort", "LlmResponseError", "LlmTimeoutError", "LlmUnavailableError", "PortContractError",
     "Stamp", "VersionInfo", "VersionPort", "base_version", "generation_folder",
-    "sensorium_expo_0_1_2", "sensorium_fragrance_1_0_0", "sensorium_icad_0_1_0",
+    "sensorium_expo_0_1_2", "sensorium_fragrance_1_0_0", "sensorium_fragrance_1_1_0", "sensorium_icad_0_1_0",
 ]
