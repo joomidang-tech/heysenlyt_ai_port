@@ -139,14 +139,18 @@ class HyangyeonPrior:
     name          : 1차 향 이름.
     emotion_group : 1차 감정군(5군 id) — 참고용. ⛔ 발화에 감정군을 말하지 않는다(AI PRD).
     keywords      : 1차 핵심 키워드(참가자가 쓴 말 · 최대 6) — compose 의 `result_keywords`.
-    ⛔ 1차 대화 원문·향료명·배합 양은 **칸이 없다**(보안 검증 H1 · 향료명 0회 · I-D23).
+    turns         : 1차 대화 원문 `((role, content), …)` 시간순 — role 은 "user" | "assistant"(2026-10-15 · 보안 검증 H1 개정).
+                    통합코드가 DB 에서 읽어 자른 값이다(항목 500자 · 최대 24). 2차가 1차에서 이미 답한 장면을 되묻지 않게 하는 재료.
+                    ⚠️ 손님 발화 원문이다 — 그대로 되말하지 않는다(남의 코드를 입력한 사람이 볼 수 있다). 쓰는 방식은 어댑터 판단.
+    ⛔ 향료명·배합 양은 **칸이 없다**(향료명 0회 · I-D23).
     """
 
     name: str = ""
     emotion_group: str = ""
     keywords: tuple[str, ...] = ()
+    turns: tuple[tuple[str, str], ...] = ()
 
-    _KEYS = ("name", "emotion_group", "keywords")
+    _KEYS = ("name", "emotion_group", "keywords", "turns")
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str):
@@ -160,6 +164,19 @@ class HyangyeonPrior:
         if any(not isinstance(k, str) for k in self.keywords):
             raise PortContractError("HyangyeonPrior.keywords 의 항목은 문자열이어야 한다")
         object.__setattr__(self, "keywords", tuple(self.keywords))
+        if isinstance(self.turns, (str, bytes)) or not isinstance(self.turns, (tuple, list)):
+            raise PortContractError(f"HyangyeonPrior.turns 는 (role, content) 목록이어야 한다({type(self.turns).__name__})")
+        turns = []
+        for t in self.turns:
+            if isinstance(t, (str, bytes)) or not isinstance(t, (tuple, list)) or len(t) != 2:
+                raise PortContractError("HyangyeonPrior.turns 의 항목은 (role, content) 쌍이어야 한다")
+            role, content = t
+            if role not in ("user", "assistant"):
+                raise PortContractError(f"HyangyeonPrior.turns 의 role 은 user | assistant 여야 한다({role!r})")
+            if not isinstance(content, str):
+                raise PortContractError("HyangyeonPrior.turns 의 content 는 문자열이어야 한다")
+            turns.append((role, content))
+        object.__setattr__(self, "turns", tuple(turns))
 
     @classmethod
     def from_dict(cls, d: Mapping[str, Any]) -> "HyangyeonPrior":
@@ -167,10 +184,14 @@ class HyangyeonPrior:
             raise PortContractError(f"HyangyeonPrior.from_dict: Mapping 이 아니다({type(d).__name__})")
         _reject_unknown("HyangyeonPrior", d, cls._KEYS, "hyangyeon.prior 키")
         return cls(name=d.get("name") or "", emotion_group=d.get("emotion_group") or "",
-                   keywords=d.get("keywords") if d.get("keywords") is not None else ())
+                   keywords=d.get("keywords") if d.get("keywords") is not None else (),
+                   turns=d.get("turns") if d.get("turns") is not None else ())
 
     def to_dict(self) -> dict[str, Any]:
-        return {"name": self.name, "emotion_group": self.emotion_group, "keywords": list(self.keywords)}
+        out: dict[str, Any] = {"name": self.name, "emotion_group": self.emotion_group, "keywords": list(self.keywords)}
+        if self.turns:
+            out["turns"] = [list(t) for t in self.turns]
+        return out
 
 
 @dataclass(frozen=True)
@@ -180,7 +201,7 @@ class HyangyeonContext:
     round      : 1 | 2 (1차 · 2차 대화). 서버가 재확정한 값.
     final_turn : 마지막 턴(#10) 여부 — 그 턴은 서버가 LLM 없이 고정 문장을 낸다(어댑터는 불리지 않는다).
     turn       : 이번에 만들 AI 발화 번호(1부터 · 서버가 셈). 없으면 None(= 1번째로 본다).
-    prior      : 2차에만 — 1차 결과 요약(HyangyeonPrior).
+    prior      : 2차에만 — 1차 결과 요약 + 1차 대화 원문(HyangyeonPrior).
     """
 
     round: int

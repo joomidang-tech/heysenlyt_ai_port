@@ -317,3 +317,44 @@ def test_string_list_fields_do_not_split_a_single_string():
     p = IcadPayload.from_dict({"is_valid": False, "errors": "boom", "warnings": "w"})
     assert p.errors == ("boom",) and p.warnings == ("w",)
     assert IcadPayload(is_valid=False, result_keywords="창가").result_keywords == ("창가",)  # type: ignore[arg-type]
+
+
+# ── ICAD-AI-10 · 2차 prior 의 1차 대화 원문 `turns` (2026-10-15 · 보안 검증 H1 개정) ─────────────────────────────
+def test_hyangyeon_prior_turns_round_trip_and_default_empty():
+    from heysenlyt_ai_port.sensorium_icad_0_1_0 import ConversationOptions, HyangyeonPrior
+
+    # 옛 호출(필드 없음)은 그대로 통과하고, 기본값은 빈 튜플이다 — to_dict 에도 키가 생기지 않는다(와이어 무변경)
+    old = HyangyeonPrior(name="a", emotion_group="recovery", keywords=("창가",))
+    assert old.turns == () and "turns" not in old.to_dict()
+
+    web = {"hyangyeon": {"round": 2, "final_turn": False, "turn": 1,
+                         "prior": {"name": "저녁 이불", "emotion_group": "recovery", "keywords": ["창가"],
+                                   "turns": [["user", "여름 밤 옥상에서 화채 먹었어"], ["assistant", "그때 어떤 바람이었나요?"]]}}}
+    opts = ConversationOptions.from_dict(web)
+    assert opts.hyangyeon.prior.turns == (("user", "여름 밤 옥상에서 화채 먹었어"), ("assistant", "그때 어떤 바람이었나요?"))
+    assert opts.to_dict() == web
+
+
+@pytest.mark.parametrize("turns", [
+    "user: 안녕",                       # 문자열
+    [["system", "x"]],                  # role 오류
+    [["user"]],                         # 쌍이 아님
+    [["user", 3]],                      # content 가 문자열 아님
+    [{"role": "user", "content": "x"}], # converse 는 [role, content] 쌍이다(compose 와 다름)
+])
+def test_hyangyeon_prior_turns_shape_violations_raise(turns):
+    from heysenlyt_ai_port.sensorium_icad_0_1_0 import HyangyeonPrior
+
+    with pytest.raises(PortContractError):
+        HyangyeonPrior.from_dict({"name": "a", "turns": turns})
+
+
+def test_compose_prior_turns_are_compose_turns():
+    from heysenlyt_ai_port.sensorium_icad_0_1_0.compose import ComposePrior, ComposeTurn
+
+    assert ComposePrior(name="a", emotion_group="recovery").turns == ()
+    p = ComposePrior(name="a", emotion_group="recovery", turns=[ComposeTurn("user", "화채")])
+    assert p.turns == (ComposeTurn("user", "화채"),)
+    for bad in ("화채", [("user", "화채")], [{"role": "user", "content": "화채"}]):
+        with pytest.raises(PortContractError):
+            ComposePrior(name="a", emotion_group="recovery", turns=bad)  # type: ignore[arg-type]

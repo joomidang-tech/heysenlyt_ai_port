@@ -419,7 +419,10 @@ class ComposeTurn:
 
 @dataclass(frozen=True)
 class ComposePrior:
-    """2차(활동 4)에만 실리는 **1차 결과 요약** — 사용 여부는 어댑터 판단.
+    """2차(활동 4)에만 실리는 **1차 결과 요약 + 1차 대화 원문** — 사용 여부는 어댑터 판단.
+
+    turns : 1차 대화 원문(`ComposeTurn` 튜플 · 시간순) — 2026-10-15 보안 검증 H1 개정. 통합코드가 DB 에서 읽어 자른 값
+            (항목 500자 · 최대 24). `history` 는 2차 대화만이고, 1차는 여기로 온다. 없으면 `()`(종전과 같다).
 
     ⛔ 배합 양(amountMl·percent·totalVolumeMl)은 **절대 싣지 않는다**(사양서 §2-3 · I-D23).
        converse 응답은 손님 SSE 로 그대로 내려가는데 그 경로엔 배합 allowlist 가 없어, 양이
@@ -430,6 +433,7 @@ class ComposePrior:
     name: str
     emotion_group: str
     note_names: tuple[str, ...] = ()
+    turns: tuple[ComposeTurn, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not isinstance(self.emotion_group, str):
@@ -437,6 +441,10 @@ class ComposePrior:
         if isinstance(self.note_names, (str, bytes)) or any(not isinstance(n, str) for n in self.note_names):
             raise PortContractError("ComposePrior.note_names 는 문자열 목록이어야 한다")
         object.__setattr__(self, "note_names", tuple(self.note_names))
+        if isinstance(self.turns, (str, bytes)) or not isinstance(self.turns, (tuple, list)) \
+                or any(not isinstance(t, ComposeTurn) for t in self.turns):
+            raise PortContractError("ComposePrior.turns 는 ComposeTurn 목록이어야 한다")
+        object.__setattr__(self, "turns", tuple(self.turns))
 
 
 @dataclass(frozen=True)
