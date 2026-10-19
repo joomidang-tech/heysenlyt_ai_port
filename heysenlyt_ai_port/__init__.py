@@ -11,6 +11,7 @@
 | `sensorium_fragrance_1_1_0/` | sensorium-fragrance-1.1.0 | fragrance | 1.0.0 과 같은 포트(2026-10-13 · 시연용 Tecan 세대 — 향료 목록만 다름) |
 | `sensorium_expo_0_1_2/`      | sensorium-expo-0.1.2      | flavor    | `recipe.py`(generate) · `conversation.py` |
 | `sensorium_icad_0_1_0/`      | sensorium-icad-0.1.0 (가id) | fragrance | `conversation.py` · `compose.py` |
+| `sensorium_shop_0_1_0/`      | sensorium-shop-0.1.0      | fragrance | `recipe.py`(generate) · `conversation.py` — 센릿샵(House of Senlyt · 2026-10-19 v2.0.0) |
 | 최상위                       | —                         | —         | `llm.py`(LlmPort · 역방향) · `errors.py` · `version.py`(VersionPort · Stamp · id↔폴더 규칙) |
 
 ⛔ **세대 폴더는 자기완결** — 세대끼리 import 금지. 세대 폴더가 의존할 수 있는 건 최상위 3파일뿐(tests/test_shape.py).
@@ -20,7 +21,7 @@
    (2026-09-21 까지의 `from heysenlyt_ai_port import RecipePort` 는 **사라졌다** — 소비자는 어댑터·통합코드 둘뿐이고 같은 사이클에 옮겼다.)
 """
 
-from heysenlyt_ai_port import sensorium_expo_0_1_2, sensorium_fragrance_1_0_0, sensorium_fragrance_1_1_0, sensorium_icad_0_1_0
+from heysenlyt_ai_port import sensorium_expo_0_1_2, sensorium_fragrance_1_0_0, sensorium_fragrance_1_1_0, sensorium_icad_0_1_0, sensorium_shop_0_1_0
 from heysenlyt_ai_port.errors import LlmError, LlmResponseError, LlmTimeoutError, LlmUnavailableError, PortContractError
 from heysenlyt_ai_port.llm import LlmPort
 from heysenlyt_ai_port.version import Stamp, VersionInfo, VersionPort, base_version, generation_folder
@@ -31,6 +32,7 @@ GENERATIONS = {
     sensorium_fragrance_1_1_0.VERSION_ID: sensorium_fragrance_1_1_0,
     sensorium_expo_0_1_2.VERSION_ID: sensorium_expo_0_1_2,
     sensorium_icad_0_1_0.VERSION_ID: sensorium_icad_0_1_0,
+    sensorium_shop_0_1_0.VERSION_ID: sensorium_shop_0_1_0,
 }
 
 # ── ⚠️ 하위호환 shim — **v1.4.0 사이클 동안만** (2026-09-27 검증팀 P1) ─────────────────────────
