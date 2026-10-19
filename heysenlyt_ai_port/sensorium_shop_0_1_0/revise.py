@@ -6,6 +6,7 @@
 ## 길이 상한 (비용·DoS 방어 — 넘으면 `PortContractError` · 통합코드가 400 으로 돌려준다)
   Turn.content ≤ 4000자 · 대화(history/conversation) ≤ 100턴 · ScentBrief 글 칸 ≤ 200자 · 목록 칸 ≤ 20개(항목 ≤ 200자)
   ReviseContext: original_request ≤ 1500 · composer_note ≤ 700 · recipe_name ≤ 40 · recipe_description ≤ 300 · note_names ≤ 60개
+                 · reaction_reasons ≤ 20개(항목 ≤ 200자)
 """
 
 from __future__ import annotations
@@ -159,7 +160,7 @@ class ScentBrief:
 _REVISE_KEYS = {  # 와이어 키 → 필드명
     "originalRequest": "original_request", "recipeName": "recipe_name", "recipeDescription": "recipe_description",
     "composerNote": "composer_note", "noteNames": "note_names", "brief": "brief",
-    "latestReaction": "latest_reaction", "reactions": "reactions",
+    "latestReaction": "latest_reaction", "reactions": "reactions", "reactionReasons": "reaction_reasons",
 }
 
 
@@ -175,6 +176,9 @@ class ReviseContext:
     brief              : 원본을 만들 때의 `ScentBrief`(원본 레시피 응답에서 받아 저장한 것 · 옛 레시피는 None).
     latest_reaction    : 가장 최근 시향 평가 — 고정 첫 질문을 고른 기준.
     reactions          : 시향 평가 이력(오래된 것 → 최근) — 「예전 평가는 AI 가 대화에서 참고한다」.
+    reaction_reasons   : 가장 최근 👎 의 이유(손님이 고른 칩 글 · 2026-10-19 · 관호님 워크오더 「향료 id 33종」 §7).
+                         ⚠️ 화면의 👎 이유 칩은 기획 미결(정책보드 APP-RECIPE)이라 지금 통합코드는 채우지 않는다(= () · 그 이유는 대화로 받는다).
+                         칩이 생기면 통합코드가 채우고 어댑터는 고치지 않는다.
     """
 
     original_request: str
@@ -185,6 +189,7 @@ class ReviseContext:
     note_names: tuple[str, ...] = ()
     brief: ScentBrief | None = None
     reactions: tuple[str, ...] = ()
+    reaction_reasons: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         for k, limit in (("original_request", MAX_ORIGINAL_REQUEST_CHARS), ("recipe_name", MAX_RECIPE_NAME_CHARS),
@@ -200,6 +205,9 @@ class ReviseContext:
         if any(r not in REACTIONS for r in reacts):
             raise PortContractError(f"ReviseContext.reactions 의 값은 {REACTIONS} 중 하나여야 한다")
         object.__setattr__(self, "reactions", reacts)
+        object.__setattr__(self, "reaction_reasons", _str_tuple("ReviseContext", "reaction_reasons", self.reaction_reasons,
+                                                                max_items=MAX_BRIEF_LIST_ITEMS,
+                                                                max_item_chars=MAX_BRIEF_TEXT_CHARS) or ())
         if self.brief is not None and not isinstance(self.brief, ScentBrief):
             raise PortContractError("ReviseContext.brief 는 ScentBrief 여야 한다")
 
@@ -217,7 +225,7 @@ class ReviseContext:
                    latest_reaction="none" if d.get("latestReaction") is None else d["latestReaction"],
                    recipe_description=d.get("recipeDescription") or "", composer_note=d.get("composerNote") or "",
                    note_names=d.get("noteNames") or (), brief=ScentBrief.from_dict(b) if b is not None else None,
-                   reactions=d.get("reactions") or ())
+                   reactions=d.get("reactions") or (), reaction_reasons=d.get("reactionReasons") or ())
 
     def to_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {}

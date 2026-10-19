@@ -241,3 +241,46 @@ def test_shop_port_docstrings_carry_no_internal_paths():
     for f in root.glob("*.py"):
         text = f.read_text(encoding="utf-8")
         assert not re.search(r"(planner|developer|ai-developer)/|application/\w+\.py|\.md\b", text), f.name
+
+
+# ── 2026-10-19 칸 둘(관호님 워크오더 「향료 id 33종」 §7) — 직전 요점 회송 · 👎 이유 ─────────────────────────────
+
+def test_conversation_options_round_trips_previous_brief():
+    from heysenlyt_ai_port.sensorium_shop_0_1_0.conversation import ConversationOptions
+    from heysenlyt_ai_port.sensorium_shop_0_1_0.revise import ScentBrief
+
+    wire = {"palette": ["cedarwood"], "aiTurn": 2, "recipeButtonAiTurn": 4,
+            "brief": {"purpose": "매장 입구", "feel": None, "avoid": [], "liked": None, "weight": None,
+                      "occasion": None, "inferred": []}}
+    o = ConversationOptions.from_dict(wire)
+    assert isinstance(o.brief, ScentBrief) and o.brief.purpose == "매장 입구" and o.brief.avoid == ()
+    assert o.to_dict()["brief"]["purpose"] == "매장 입구"
+    # 없으면 키도 없다(첫 턴 · 오늘 와이어 그대로)
+    assert "brief" not in ConversationOptions.from_dict({"palette": None, "aiTurn": 1, "recipeButtonAiTurn": 4}).to_dict()
+    assert ConversationOptions.from_dict({"palette": None, "aiTurn": 1, "recipeButtonAiTurn": 4, "brief": None}).brief is None
+
+
+def test_conversation_options_rejects_malformed_brief():
+    import pytest
+
+    from heysenlyt_ai_port.errors import PortContractError
+    from heysenlyt_ai_port.sensorium_shop_0_1_0.conversation import ConversationOptions
+
+    for bad in ("요점", {"purpose": "x" * 201}, {"unknown": 1}):
+        with pytest.raises(PortContractError):
+            ConversationOptions.from_dict({"palette": None, "aiTurn": 1, "recipeButtonAiTurn": 4, "brief": bad})
+
+
+def test_revise_context_reaction_reasons_optional_and_capped():
+    import pytest
+
+    from heysenlyt_ai_port.errors import PortContractError
+    from heysenlyt_ai_port.sensorium_shop_0_1_0.revise import ReviseContext
+
+    base = {"originalRequest": "마른 나무", "recipeName": "차분한 나무"}
+    assert ReviseContext.from_dict(base).reaction_reasons == ()
+    r = ReviseContext.from_dict({**base, "latestReaction": "dislike", "reactionReasons": ["너무 달아요"]})
+    assert r.reaction_reasons == ("너무 달아요",) and r.to_dict()["reactionReasons"] == ["너무 달아요"]
+    for bad in (["x" * 201], ["a"] * 21, "너무 달아요"):
+        with pytest.raises(PortContractError):
+            ReviseContext.from_dict({**base, "reactionReasons": bad})

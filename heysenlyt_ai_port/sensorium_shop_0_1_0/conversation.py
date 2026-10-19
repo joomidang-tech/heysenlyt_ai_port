@@ -8,6 +8,8 @@
   · `params.recipeButtonAiTurn` 버튼이 보이기 시작하는 AI 발화 번호 — 「서두르면 버튼이 곧 나온다고 안내」.
   · `params.revise`            수정 대화일 때 원본 맥락(`ReviseContext` · 원본 `ScentBrief` 포함).
   · `params.openingQuestion`   수정 대화의 **고정 첫 질문**(화면이 이미 띄운 문장) — 다시 묻지 않는다.
+  · `params.brief`             직전 턴 응답 `result`(들은 요점)를 통합코드가 되돌려 준다(2026-10-19 · 관호님 워크오더 「향료 id 33종」 §7)
+                                — 「지금까지 들은 칸 / 아직 빈 칸」을 프롬프트에 싣는 재료. 첫 턴·모름 = 키 없음 또는 null.
   응답 `result` = 지금까지 들은 요점(`ScentBrief`).
 
 ## 통합코드 몫 (어댑터가 하지 않는 것 — 「어댑터 = 순수 기능」)
@@ -31,7 +33,7 @@ from heysenlyt_ai_port.sensorium_shop_0_1_0.recipe import Palette
 from heysenlyt_ai_port.sensorium_shop_0_1_0.revise import MAX_TURNS, ReviseContext, ScentBrief, Turn, turns_from_wire
 from heysenlyt_ai_port.version import Stamp, VersionPort
 
-_OPTION_KEYS = ("palette", "aiTurn", "recipeButtonAiTurn", "revise", "openingQuestion")
+_OPTION_KEYS = ("palette", "aiTurn", "recipeButtonAiTurn", "revise", "openingQuestion", "brief")
 MAX_OPENING_QUESTION_CHARS = 200
 
 
@@ -46,6 +48,8 @@ class ConversationOptions:
                            `ai_turn >= recipe_button_ai_turn` 이면 이번 답 뒤 버튼이 보인다 — 「서두르는 손님에게 버튼이 곧 나온다」 안내의 근거.
     revise               : 수정 대화일 때 원본(`ReviseContext`). 새 대화는 None.
     opening_question     : 수정 대화에서 화면이 이미 띄운 고정 첫 질문 — 다시 묻지 않는다. 새 대화는 None. ≤ 200자.
+    brief                : 직전 턴까지 들은 요점(직전 응답 `result` 를 통합코드가 보관했다 되돌려 준 것). 첫 턴·모름 = None.
+                           어댑터는 이 값을 「이미 들은 것」으로 읽고 다시 묻지 않는다 — 판단(무엇을 더 물을지)은 어댑터 몫.
     """
 
     palette: Palette | None
@@ -53,6 +57,7 @@ class ConversationOptions:
     recipe_button_ai_turn: int
     revise: ReviseContext | None = None
     opening_question: str | None = None
+    brief: ScentBrief | None = None
 
     def __post_init__(self) -> None:
         if self.palette is not None and not isinstance(self.palette, Palette):
@@ -69,6 +74,8 @@ class ConversationOptions:
             if len(self.opening_question) > MAX_OPENING_QUESTION_CHARS:
                 raise PortContractError(f"ConversationOptions.opening_question 은 {MAX_OPENING_QUESTION_CHARS}자 이하여야 한다"
                                         f"({len(self.opening_question)}자)")
+        if self.brief is not None and not isinstance(self.brief, ScentBrief):
+            raise PortContractError("ConversationOptions.brief 는 ScentBrief 또는 None 이어야 한다")
 
     @property
     def recipe_button_visible(self) -> bool:
@@ -89,9 +96,11 @@ class ConversationOptions:
                                 or not all(isinstance(x, str) for x in pal)):
             raise PortContractError("params.palette 는 향료 id 문자열 목록 또는 null(모름)이어야 한다")
         rev = d.get("revise")
+        b = d.get("brief")
         return cls(palette=Palette(notes=tuple(pal)) if pal is not None else None, ai_turn=d["aiTurn"], recipe_button_ai_turn=d["recipeButtonAiTurn"],
                    revise=ReviseContext.from_dict(rev) if rev is not None else None,
-                   opening_question=d.get("openingQuestion"))
+                   opening_question=d.get("openingQuestion"),
+                   brief=ScentBrief.from_dict(b) if b is not None else None)
 
     def to_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = {"palette": list(self.palette.notes) if self.palette is not None else None,
@@ -101,6 +110,8 @@ class ConversationOptions:
             out["revise"] = self.revise.to_dict()
         if self.opening_question is not None:
             out["openingQuestion"] = self.opening_question
+        if self.brief is not None:
+            out["brief"] = self.brief.to_dict()
         return out
 
 
