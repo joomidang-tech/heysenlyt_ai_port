@@ -8,12 +8,12 @@
 | 설명(한 줄 · 「~향」으로 끝남) | AI | `ShopRecipe.description` |
 | 조향 노트(손님 말을 근거로 한 이유 · 넣은 것과 뺀 것) | AI | `ShopRecipe.composer_note` |
 | 향료 구성 | 엔진 | `ShopRecipe.notes[]`(id 필수 · palette 안의 id 만) |
-| 향 계열 | 매핑표(통합코드) | — 이 계약에 없다 |
+| 향 계열(CATEGORY · 「그린 · 우디」) | 엔진(향료별 계열) | `ShopRecipe.families[]`(`ScentFamily` · id + 표기명 · None = 안 채움) |
 
 ## 통합코드 몫 (어댑터가 하지 않는 것)
   · 버튼 시점 · 멱등(같은 대화로 두 번 만들지 않기) · 최소 2초 / 60초 실패 · 다시 시도.
   · **이름 20자 초과 · 같은 계정에 같은 이름** → AI 를 다시 부르지 않고 통합코드가 다시 짓는다(「이름 2」).
-  · 저장·표시·향 계열 매핑. `is_valid=False` 면 저장하지 않고 「레시피를 만들지 못했어요」.
+  · 저장·표시(향 계열은 받은 순서 그대로 「 · 」로 잇는다). `is_valid=False` 면 저장하지 않고 「레시피를 만들지 못했어요」.
 
 ## 수정본 = 새 레시피 (2부 §13)
   재조향(`regenerate`)이 아니라 **같은 `generate`** 에 수정 대화(`params.conversation`)와 원본 맥락(`params.revise`)을 싣는다.
@@ -106,6 +106,52 @@ class RecipeNote:
         return out
 
 
+MAX_FAMILIES = 8
+MAX_FAMILY_CHARS = 40
+
+
+@dataclass(frozen=True)
+class ScentFamily:
+    """향 계열 하나(결과 화면 CATEGORY · 수정 카드 칩) — id 는 대조용(바뀌지 않는 코드 · 예 `green`), name 은 요청 `lang` 표기(예 「그린」).
+    와이어 `{"id": "green", "name": "그린"}` · 모르는 키는 `PortContractError`."""
+
+    id: str
+    name: str
+
+    def __post_init__(self) -> None:
+        for k in ("id", "name"):
+            v = getattr(self, k)
+            if not isinstance(v, str) or not v.strip():
+                raise PortContractError(f"ScentFamily.{k} 는 비어 있지 않은 문자열이어야 한다: {v!r}")
+            if len(v) > MAX_FAMILY_CHARS:
+                raise PortContractError(f"ScentFamily.{k} 는 {MAX_FAMILY_CHARS}자 이하여야 한다")
+
+    @classmethod
+    def from_dict(cls, d: Mapping[str, Any]) -> "ScentFamily":
+        if not isinstance(d, Mapping):
+            raise PortContractError(f"ScentFamily.from_dict: Mapping 이 아니다({type(d).__name__})")
+        bad = sorted(set(d) - {"id", "name"})
+        if bad:
+            raise PortContractError(f"ScentFamily: 모르는 키 {bad}")
+        return cls(id=d.get("id"), name=d.get("name"))  # type: ignore[arg-type]
+
+    def to_dict(self) -> dict[str, str]:
+        return {"id": self.id, "name": self.name}
+
+
+def _families(v: Any) -> tuple[ScentFamily, ...] | None:
+    if v is None:
+        return None
+    if isinstance(v, (str, bytes, Mapping)) or not isinstance(v, (list, tuple)):
+        raise PortContractError(f"ShopRecipe.families 는 ScentFamily 목록 또는 None 이어야 한다({type(v).__name__})")
+    out = tuple(x if isinstance(x, ScentFamily) else ScentFamily.from_dict(x) for x in v)
+    if len(out) > MAX_FAMILIES:
+        raise PortContractError(f"ShopRecipe.families 는 {MAX_FAMILIES}개 이하여야 한다({len(out)}개)")
+    if len({f.id for f in out}) != len(out):
+        raise PortContractError("ShopRecipe.families 에 같은 id 가 두 번 있다")
+    return out
+
+
 @dataclass(frozen=True)
 class ShopRecipe:
     """센릿샵 레시피 — 텍스트는 요청 `lang` 한 언어로 쓴다(언어별 칸을 따로 두지 않는다).
@@ -118,6 +164,8 @@ class ShopRecipe:
                     (PRD §4 「못 받으면」: 목적 = 내 몸에 뿌릴 향 · 느낌 = 대화에서 추정 · §5: 피할 향 = 없음 `()`).
                     통합코드가 레시피에 저장해 다음 수정 때 `ReviseContext.brief` 로 돌려준다(피할 향의 정식 통로).
     notes         : 향료 구성(엔진) — 비면 `is_valid=False` 와 함께.
+    families      : 향 계열(엔진 — 향료별 계열에서 이 레시피를 대표하는 것 · 화면에 보일 순서대로) — `ScentFamily` 튜플.
+                    **None = 안 채움(모름 · 통합코드는 CATEGORY 줄을 숨긴다)** · `()` = 「계열 없음」으로 답함(역시 숨김).
     """
 
     name: str
@@ -126,10 +174,12 @@ class ShopRecipe:
     brief: ScentBrief
     notes: tuple[RecipeNote, ...] = ()
     total_volume_ml: float | None = None
+    families: tuple[ScentFamily, ...] | None = None
     extra: Mapping[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        _freeze_extra(self, set(_RECIPE_KEYS) | {"notes", "brief"})
+        _freeze_extra(self, set(_RECIPE_KEYS) | {"notes", "brief", "families"})
+        object.__setattr__(self, "families", _families(self.families))
         if not isinstance(self.brief, ScentBrief):
             raise PortContractError("ShopRecipe.brief 는 ScentBrief 여야 한다")
         for k in ("name", "description", "composer_note"):
@@ -150,13 +200,15 @@ class ShopRecipe:
         if d.get("brief") is None:
             raise PortContractError("ShopRecipe.from_dict: 필수 키 'brief' 누락")
         notes = tuple(RecipeNote.from_dict(n) for n in (d.get("notes") or ()))
-        return cls(**known, brief=ScentBrief.from_dict(d["brief"]), notes=notes,
-                   extra={k: v for k, v in d.items() if k not in _RECIPE_KEYS and k not in ("notes", "brief")})
+        return cls(**known, brief=ScentBrief.from_dict(d["brief"]), notes=notes, families=_families(d.get("families")),
+                   extra={k: v for k, v in d.items() if k not in _RECIPE_KEYS and k not in ("notes", "brief", "families")})
 
     def to_dict(self) -> dict[str, Any]:
         out = {w: getattr(self, f) for w, f in _RECIPE_KEYS.items() if getattr(self, f) is not None}
         out["brief"] = self.brief.to_dict()
         out["notes"] = [n.to_dict() for n in self.notes]
+        if self.families is not None:
+            out["families"] = [f.to_dict() for f in self.families]
         out.update(self.extra)
         return out
 

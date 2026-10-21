@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from heysenlyt_ai_port.sensorium_shop_0_1_0.recipe import Palette, RecipeNote, RecipeOptions, RecipeParam, RecipePort, RecipeReply, ShopRecipe
+from heysenlyt_ai_port.sensorium_shop_0_1_0.recipe import MAX_FAMILIES, Palette, RecipeNote, RecipeOptions, RecipeParam, RecipePort, RecipeReply, ScentFamily, ShopRecipe
 from heysenlyt_ai_port.sensorium_shop_0_1_0.conversation import ConversationOptions, ConversationParam, ConversationPort, ConverseReply
 from heysenlyt_ai_port.sensorium_shop_0_1_0.revise import BRIEF_FIELDS, REACTIONS, ROLES, WEIGHTS, ReviseContext, ScentBrief, Turn
 
@@ -17,7 +17,7 @@ from heysenlyt_ai_port.sensorium_shop_0_1_0.ai_contract import AiContract  # noq
 PORTS = tuple(n for n in ("recipe", "conversation", "compose") if n in AiContract.__abstractmethods__)
 
 __all__ = [
-    "BRIEF_FIELDS", "DOMAIN", "PORTS", "REACTIONS", "ROLES", "VERSION_ID", "WEIGHTS", "AiContract",
+    "BRIEF_FIELDS", "DOMAIN", "MAX_FAMILIES", "PORTS", "REACTIONS", "ROLES", "VERSION_ID", "WEIGHTS", "AiContract",
     "ConversationOptions", "ConversationParam", "ConversationPort", "ConverseReply",
-    "Palette", "RecipeNote", "RecipeOptions", "RecipeParam", "RecipePort", "RecipeReply", "ReviseContext", "ScentBrief", "ShopRecipe", "Turn",
+    "Palette", "RecipeNote", "RecipeOptions", "RecipeParam", "RecipePort", "RecipeReply", "ReviseContext", "ScentBrief", "ScentFamily", "ShopRecipe", "Turn",
 ]

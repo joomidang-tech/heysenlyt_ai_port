@@ -284,3 +284,29 @@ def test_revise_context_reaction_reasons_optional_and_capped():
     for bad in (["x" * 201], ["a"] * 21, "너무 달아요"):
         with pytest.raises(PortContractError):
             ReviseContext.from_dict({**base, "reactionReasons": bad})
+
+
+def test_recipe_families_slot_none_is_unfilled_and_wire_round_trips():
+    """향 계열(CATEGORY) — 엔진이 향료별 계열로 채우는 칸. None = 안 채움(숨김) · () = 없음 · id + 표기명."""
+    base = dict(name="고요한 숲길", description="비 온 뒤 숲길의 향", composer_note="…", brief=shop.ScentBrief())
+    unfilled = shop.ShopRecipe(**base)
+    assert unfilled.families is None and "families" not in unfilled.to_dict()
+    assert shop.ShopRecipe(**base, families=()).to_dict()["families"] == []
+    r = shop.ShopRecipe(**base, families=[{"id": "green", "name": "그린"}, shop.ScentFamily(id="woody", name="우디")])
+    assert r.families == (shop.ScentFamily("green", "그린"), shop.ScentFamily("woody", "우디"))
+    w = r.to_dict()
+    assert w["families"] == [{"id": "green", "name": "그린"}, {"id": "woody", "name": "우디"}]
+    assert shop.ShopRecipe.from_dict(w) == r
+
+
+@pytest.mark.parametrize("bad", [
+    "그린 · 우디",                                   # 문자열 하나로 주지 않는다(클래스로)
+    [{"id": "green"}],                               # 표기명 빠짐
+    [{"id": "", "name": "그린"}],                    # 빈 id
+    [{"id": "green", "name": "그린", "weight": 1}],  # 모르는 키
+    [{"id": "green", "name": "그린"}, {"id": "green", "name": "그린2"}],  # 같은 id 두 번
+    [{"id": f"f{i}", "name": "x"} for i in range(shop.MAX_FAMILIES + 1)],
+])
+def test_recipe_families_rejects_malformed(bad):
+    with pytest.raises(PortContractError):
+        shop.ShopRecipe(name="n", description="d", composer_note="c", brief=shop.ScentBrief(), families=bad)
